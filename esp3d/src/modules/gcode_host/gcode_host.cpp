@@ -124,7 +124,8 @@ void GcodeHost::flush()
         //check if we have proper ok response
         //like if numbering is enabled
         if(_step == HOST_WAIT4_ACK) {
-            _step=HOST_READ_LINE;
+            _step=_nextStep;
+            _nextStep=HOST_READ_LINE;
         } else {
             log_esp3d("Got ok but out of the query");
         }
@@ -132,6 +133,41 @@ void GcodeHost::flush()
         if (_response.indexOf("error") != -1) {
             log_esp3d("Got error");
             _step = HOST_ERROR_STREAM;
+        }
+        else if(_response.startsWith("echo:busy:") || _response.startsWith("busy:")) {
+            //busy received reset timeout
+            log_esp3d("Got bussy");
+            _startTimeOut = millis();
+        }
+        else if(_response.startsWith("//")) {
+            String command = _response.substring(2);
+            command.trim();
+            String params;
+            if(command.startsWith("action:")) {
+                command = command.substring(7);
+                if(command.indexOf(" ")) {
+                    command = command.substring(0,command.indexOf(" "));
+                    params = command.substring(command.indexOf(" ") + 1);
+                }
+                log_esp3d("Got command: %s params: %s", command, params);
+                if(command == "cancel") {
+                    abort();
+                }
+                else if(command == "pause") {
+                    pause();
+                }
+                else if(command == "paused") {
+
+                }
+                else if(command == "resume") {
+                    resume();
+                }
+                else if(command == "resumed") {
+                    if(_step == HOST_PAUSED) {
+                        _step = HOST_READ_LINE;
+                    }
+                }
+            }
         }
     }
     //What is have processing to do
@@ -373,7 +409,11 @@ void GcodeHost::handle()
         if (_nextStep==HOST_PAUSE_STREAM) {
             _step = HOST_PAUSE_STREAM;
             _nextStep = HOST_READ_LINE;
-        } else {
+        } else if(_nextStep==HOST_ABORT_STREAM) {
+            _step = HOST_ABORT_STREAM;
+            _nextStep = HOST_READ_LINE;
+        }
+        else {
             readNextCommand();
         }
         break;
@@ -388,11 +428,25 @@ void GcodeHost::handle()
         }
         break;
     case HOST_PAUSE_STREAM:
-        //TODO pause stream
+        //enviar M601 y pasar a HOST_PAUSED
+        _currentCommand = "M601";
+        _step = HOST_PROCESS_LINE;
+        _nextStep = HOST_PAUSED;
+        break;
+    case HOST_PAUSED:
+        //res a fer
         break;
     case HOST_RESUME_STREAM:
-        //Any extra action to resume stream?
-        _step = HOST_READ_LINE;
+        //enviar M602 y pasar a HOST_READ_LINE
+        _currentCommand = "M602";
+        _step = HOST_PROCESS_LINE;
+        _nextStep = HOST_READ_LINE;
+        break;
+    case HOST_ABORT_STREAM:
+        //enviar M603 y pasar a HOST_STOP_STREAM
+        _currentCommand = "M603";
+        _step = HOST_PROCESS_LINE;
+        _nextStep = HOST_STOP_STREAM;
         break;
     case HOST_STOP_STREAM:
         endStream();
@@ -428,15 +482,16 @@ bool  GcodeHost::abort()
     }
     log_esp3d("Aborting script");
     //TODO: what to do in addition ?
-    _error=ERROR_STREAM_ABORTED;
+    //_error=ERROR_STREAM_ABORTED;
     //we do not use step to do faster abort
-    endStream();
+    //endStream();
+    _nextStep = HOST_ABORT_STREAM;
     return true;
 }
 
 bool GcodeHost::pause()
 {
-    if (_step == HOST_NO_STREAM) {
+    if ((_step == HOST_NO_STREAM) || (_step == HOST_PAUSED)) {
         return false;
     }
     _nextStep = HOST_PAUSE_STREAM;
@@ -445,10 +500,10 @@ bool GcodeHost::pause()
 
 bool GcodeHost::resume()
 {
-    if (_step != HOST_PAUSE_STREAM) {
+    if (_step != HOST_PAUSED) {
         return false;
     }
-    _step = _nextStep;
+    _step = HOST_RESUME_STREAM;
     return true;
 }
 

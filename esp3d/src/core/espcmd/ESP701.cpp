@@ -69,15 +69,13 @@ bool Commands::ESP701(const char* cmd_params, level_authenticate_type auth_type,
                     response = format_response(COMMANDID, json, false, "No stream to abort");
                     noError = false;
                 }
-            }
-            if (parameter.equalsIgnoreCase("CLEAR_ERROR")) {
+            } else if (parameter.equalsIgnoreCase("CLEAR_ERROR")) {
                 esp3d_gcode_host.setErrorNum(ERROR_NO_ERROR);
                 response = format_response(COMMANDID, json, true, "Error cleared");
             } else {
                 response = format_response(COMMANDID, json, false, "Unknown action");
                 noError = false;
             }
-
         } else {
             String resp;
             bool noError = true;
