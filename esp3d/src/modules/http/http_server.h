@@ -91,12 +91,17 @@ private:
 #ifdef SD_DEVICE
     static void SDFileupload ();
     static void handleSDFileList ();
+    static void handleOctoFile();
+    static void handleOctoPrinter();
+    static void handleOCtoVersion();
     static bool StreamSDFile(const char* filename, const char * contentType);
 #endif //SD_DEVICE
 #if COMMUNICATION_PROTOCOL == MKS_SERIAL
     static void MKSFileupload ();
     static void handleMKSUpload ();
 #endif //COMMUNICATION_PROTOCOL == MKS_SERIAL
+
+    static String last_upload_file;
 };
 
 #endif //_HTTP_SERVER_H

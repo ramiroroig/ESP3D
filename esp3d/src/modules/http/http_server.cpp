@@ -48,6 +48,7 @@ bool HTTP_Server::_started = false;
 uint16_t HTTP_Server::_port = 0;
 WEBSERVER * HTTP_Server::_webserver = nullptr;
 uint8_t HTTP_Server::_upload_status = UPLOAD_STATUS_NONE;
+String HTTP_Server::last_upload_file;
 
 
 void HTTP_Server::init_handlers()
@@ -71,6 +72,9 @@ void HTTP_Server::init_handlers()
 #ifdef SD_DEVICE
     //SD
     _webserver->on ("/sdfiles", HTTP_ANY, handleSDFileList, SDFileupload);
+    _webserver->on("/api/printer", HTTP_GET, handleOctoPrinter);
+    _webserver->on("/api/version", HTTP_GET, handleOCtoVersion);
+    _webserver->on("/api/files/local", HTTP_POST, handleOctoFile ,SDFileupload);
 #endif //SD_DEVICE
 #ifdef WEB_UPDATE_FEATURE
     //web update

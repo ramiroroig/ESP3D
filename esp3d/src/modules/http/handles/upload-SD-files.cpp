@@ -98,6 +98,8 @@ void HTTP_Server::SDFileupload ()
                         filename = upload_filename;
                     }
                 }
+
+                last_upload_file = filename;
                 //Sanity check
                 if (ESP_SD::exists (filename.c_str()) ) {
                     ESP_SD::remove (filename.c_str());
